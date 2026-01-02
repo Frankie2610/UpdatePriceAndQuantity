@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Update Giá & Tồn Kho theo SKU</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <style>
+      :root {
+        --bg: #0f172a;
+        --card: #020617;
+        --border: #334155;
+        --text: #e5e7eb;
+        --muted: #94a3b8;
+        --primary: #38bdf8;
+        --success: #22c55e;
+      }
+      [data-theme="light"] {
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --border: #cbd5e1;
+        --text: #0f172a;
+        --muted: #475569;
+        --primary: #2563eb;
+        --success: #16a34a;
+      }
+      * {
+        box-sizing: border-box;
+        font-family: system-ui;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .container {
+        max-width: 1100px;
+        margin: auto;
+      }
+      .card {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      }
+      h1 {
+        margin-top: 0;
+      }
+      .dropzone {
+        border: 2px dashed var(--border);
+        border-radius: 14px;
+        padding: 24px;
+        text-align: center;
+        margin-bottom: 16px;
+        cursor: pointer;
+      }
+      .dropzone.drag {
+        border-color: var(--primary);
+        background: rgba(56, 189, 248, 0.1);
+      }
+      .dropzone input {
+        display: none;
+      }
+      .label {
+        font-weight: 600;
+      }
+      .small {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .controls {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+      select,
+      button {
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: none;
+        color: var(--text);
+      }
+      button.main {
+        background: var(--primary);
+        border: none;
+        color: #020617;
+        font-weight: 600;
+      }
+      button:disabled {
+        opacity: 0.5;
+      }
+      .status {
+        margin-top: 12px;
+        font-size: 14px;
+      }
+      .success {
+        color: var(--success);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+        font-size: 13px;
+      }
+      th,
+      td {
+        border: 1px solid var(--border);
+        padding: 6px 8px;
+        text-align: center;
+      }
+      th {
+        background: rgba(148, 163, 184, 0.15);
+      }
+      .footer {
+        text-align: center;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 24px;
+      }
+      .theme-toggle {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 6px 14px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="card">
+        <div style="display: flex; justify-content: flex-end">
+          <button class="theme-toggle" id="themeToggle">🌙 Dark</button>
+        </div>
+
+        <h1>📦 Update Giá & Tồn Kho theo SKU</h1>
+
+        <div class="dropzone" id="csvZone">
+          <div class="label">📄 File tổng sản phẩm trên Shopify</div>
+          <div class="small">CSV – kéo thả hoặc click</div>
+          <input type="file" accept=".csv" />
+        </div>
+
+        <div class="dropzone" id="excelZone">
+          <div class="label">📊 File cập nhật giá/tồn kho cho Website L&M</div>
+          <div class="small">XLSX / XLS</div>
+          <input type="file" accept=".xlsx,.xls" />
+        </div>
+
+        <div class="controls">
+          <select id="exportType">
+            <option value="csv">⬇️ CSV (Shopify)</option>
+            <option value="xlsx">⬇️ Excel (.xlsx)</option>
+          </select>
+          <button class="main" id="processBtn" disabled>
+            🚀 Update & Preview
+          </button>
+        </div>
+
+        <div class="status" id="status"></div>
+        <div id="preview"></div>
+
+        <div class="footer">© Designed by GiaQuyenVan</div>
+      </div>
+    </div>
+
+    <script>
+      /* ===== THEME ===== */
+      const root = document.documentElement;
+      const toggle = document.getElementById("themeToggle");
+      const saved = localStorage.getItem("theme") || "dark";
+      root.setAttribute("data-theme", saved);
+      toggle.innerText = saved === "dark" ? "🌙 Dark" : "☀️ Light";
+      toggle.onclick = () => {
+        const t = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        root.setAttribute("data-theme", t);
+        localStorage.setItem("theme", t);
+        toggle.innerText = t === "dark" ? "🌙 Dark" : "☀️ Light";
+      };
+
+      /* ===== FILE ===== */
+      let csvData,
+        excelData,
+        updatedRows = [];
+      const btn = document.getElementById("processBtn");
+      const status = document.getElementById("status");
+      const preview = document.getElementById("preview");
+
+      setup("csvZone", (f) =>
+        readCSV(f, (d) => {
+          csvData = d;
+          check();
+        })
+      );
+      setup("excelZone", (f) =>
+        readExcel(f, (d) => {
+          excelData = d;
+          check();
+        })
+      );
+
+      btn.onclick = updateData;
+      function check() {
+        btn.disabled = !(csvData && excelData);
+      }
+
+      function setup(id, cb) {
+        const z = document.getElementById(id);
+        const i = z.querySelector("input");
+        z.onclick = () => i.click();
+        z.ondragover = (e) => {
+          e.preventDefault();
+          z.classList.add("drag");
+        };
+        z.ondragleave = () => z.classList.remove("drag");
+        z.ondrop = (e) => {
+          e.preventDefault();
+          z.classList.remove("drag");
+          cb(e.dataTransfer.files[0]);
+        };
+        i.onchange = () => cb(i.files[0]);
+      }
+
+      function readCSV(f, cb) {
+        const r = new FileReader();
+        r.onload = (e) => {
+          const wb = XLSX.read(e.target.result, { type: "string" });
+          cb(
+            XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 })
+          );
+        };
+        r.readAsText(f);
+      }
+
+      function readExcel(f, cb) {
+        const r = new FileReader();
+        r.onload = (e) => {
+          const wb = XLSX.read(new Uint8Array(e.target.result), {
+            type: "array",
+          });
+          cb(
+            XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 })
+          );
+        };
+        r.readAsArrayBuffer(f);
+      }
+
+      function hasValue(v) {
+        return v !== undefined && v !== null && v !== "";
+      }
+
+      function updateData() {
+        const map = {};
+        for (let i = 1; i < excelData.length; i++) {
+          const [sku, p, c, q] = excelData[i];
+          if (sku) map[sku.toString().trim()] = { p, c, q };
+        }
+
+        updatedRows = [];
+        let count = 0;
+
+        for (let i = 1; i < csvData.length; i++) {
+          const sku = csvData[i][17]; // R
+          const u = sku && map[sku.toString().trim()];
+          if (u) {
+            let changed = false;
+
+            if (hasValue(u.p)) {
+              csvData[i][23] = u.p;
+              changed = true;
+            } // X
+            if (hasValue(u.c)) {
+              csvData[i][24] = u.c;
+              changed = true;
+            } // Y
+            if (hasValue(u.q)) {
+              csvData[i][20] = u.q;
+              changed = true;
+            } // U
+
+            if (changed) {
+              updatedRows.push([
+                sku,
+                hasValue(u.p) ? u.p : "(giữ nguyên)",
+                hasValue(u.c) ? u.c : "(giữ nguyên)",
+                hasValue(u.q) ? u.q : "(giữ nguyên)",
+              ]);
+              count++;
+            }
+          }
+        }
+
+        status.innerHTML = `<span class="success">✅ Đã cập nhật ${count} SKU</span>`;
+        renderPreview();
+        exportFile();
+      }
+
+      function renderPreview() {
+        let html = `<h3>🔍 Preview dữ liệu đã cập nhật</h3>
+  <table><tr>
+  <th>SKU</th><th>Giá giảm</th><th>Giá gốc</th><th>Tồn kho</th></tr>`;
+        updatedRows.forEach((r) => {
+          html += `<tr>${r.map((v) => `<td>${v}</td>`).join("")}</tr>`;
+        });
+        html += "</table>";
+        preview.innerHTML = html;
+      }
+
+      function exportFile() {
+        const type = document.getElementById("exportType").value;
+        const sheet = XLSX.utils.aoa_to_sheet(csvData);
+
+        if (type === "csv") {
+          const csv = XLSX.utils.sheet_to_csv(sheet);
+          download(csv, "SHOPIFY_UPDATED_BY_SKU.csv", "text/csv");
+        } else {
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, sheet, "Updated");
+          XLSX.writeFile(wb, "SHOPIFY_UPDATED_BY_SKU.xlsx");
+        }
+      }
+
+      function download(c, n, t) {
+        const b = new Blob([c], { type: t });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(b);
+        a.download = n;
+        a.click();
+      }
+    </script>
+  </body>
+</html>
