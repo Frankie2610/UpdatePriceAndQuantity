@@ -41,13 +41,13 @@
       }
       .card {
         background: var(--card);
-        border-radius: 16px;
         padding: 24px;
+        border-radius: 16px;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
       }
       h1 {
-        margin-top: 0;
         text-align: center;
+        margin-top: 0;
       }
       .dropzone {
         border: 2px dashed var(--border);
@@ -73,12 +73,13 @@
       }
       .controls {
         display: flex;
-        gap: 12px;
+        gap: 16px;
         flex-wrap: wrap;
-        margin-top: 12px;
+        margin-top: 16px;
+        align-items: center;
       }
-      select,
-      button {
+      button,
+      select {
         padding: 10px 14px;
         border-radius: 10px;
         border: 1px solid var(--border);
@@ -96,13 +97,6 @@
         opacity: 0.5;
         cursor: not-allowed;
       }
-      .status {
-        margin-top: 12px;
-        font-size: 14px;
-      }
-      .success {
-        color: var(--success);
-      }
       table {
         width: 100%;
         border-collapse: collapse;
@@ -118,6 +112,13 @@
       th {
         background: rgba(148, 163, 184, 0.15);
       }
+      .status {
+        margin-top: 12px;
+        font-size: 14px;
+      }
+      .success {
+        color: var(--success);
+      }
       .footer {
         text-align: center;
         font-size: 12px;
@@ -125,10 +126,9 @@
         margin-top: 24px;
       }
       .theme-toggle {
-        border: 1px solid var(--border);
         border-radius: 999px;
         padding: 6px 14px;
-        cursor: pointer;
+        border: 1px solid var(--border);
       }
     </style>
   </head>
@@ -142,41 +142,37 @@
 
         <h1>📦 Update Giá & Tồn Kho theo SKU</h1>
 
-        <!-- FILE SHOPIFY -->
         <div class="dropzone" id="csvZone">
           <div class="label">📄 File tổng sản phẩm trên Shopify</div>
           <div class="small">CSV – kéo thả hoặc click</div>
           <input type="file" accept=".csv" />
         </div>
 
-        <!-- FILE UPDATE -->
         <div class="dropzone" id="excelZone">
-          <div class="label">📊 File cập nhật giá/tồn kho cho Website L&M</div>
+          <div class="label">📊 File cập nhật giá/tồn kho</div>
           <div class="small">XLSX / XLS</div>
           <input type="file" accept=".xlsx,.xls" />
-
-          <div class="small" style="margin-top: 8px; line-height: 1.5">
-            + Cột SKU: cột A<br />
-            + Cột Giá Giảm: cột B<br />
-            + Cột Giá Gốc: cột C<br />
-            + Cột tồn kho: cột D
-          </div>
         </div>
 
-        <!-- PREVIEW TEMPLATE BUTTON -->
-        <button
-          type="button"
-          style="margin-top: 8px"
-          onclick="previewUpdateTemplate(event)"
-        >
+        <button onclick="previewUpdateTemplate(event)">
           👁 Preview file mẫu
         </button>
 
         <div class="controls">
+          <label
+            ><input type="radio" name="exportScope" value="updated" checked />
+            Export only SKU updated</label
+          >
+          <label
+            ><input type="radio" name="exportScope" value="full" /> Export full
+            file</label
+          >
+
           <select id="exportType">
-            <option value="csv">⬇️ CSV (Shopify)</option>
-            <option value="xlsx">⬇️ Excel (.xlsx)</option>
+            <option value="csv">CSV</option>
+            <option value="xlsx">Excel</option>
           </select>
+
           <button class="main" id="processBtn" disabled>
             🚀 Update & Preview
           </button>
@@ -190,7 +186,6 @@
     </div>
 
     <script>
-      /* ===== THEME ===== */
       const root = document.documentElement;
       const toggle = document.getElementById("themeToggle");
       const saved = localStorage.getItem("theme") || "dark";
@@ -203,15 +198,12 @@
         toggle.innerText = t === "dark" ? "🌙 Dark" : "☀️ Light";
       };
 
-      /* ===== FILE ===== */
-      let csvData,
-        excelData,
-        updatedRows = [];
-      let isPreviewTemplateVisible = false;
-
+      let csvData, excelData;
+      let updatedRows = [],
+        filteredData = [];
       const btn = document.getElementById("processBtn");
-      const status = document.getElementById("status");
       const preview = document.getElementById("preview");
+      const status = document.getElementById("status");
 
       setup("csvZone", (f) =>
         readCSV(f, (d) => {
@@ -225,8 +217,8 @@
           check();
         })
       );
-
       btn.onclick = updateData;
+
       function check() {
         btn.disabled = !(csvData && excelData);
       }
@@ -272,9 +264,7 @@
         r.readAsArrayBuffer(f);
       }
 
-      function hasValue(v) {
-        return v !== undefined && v !== null && v !== "";
-      }
+      const hasValue = (v) => v !== "" && v !== null && v !== undefined;
 
       function updateData() {
         const map = {};
@@ -284,116 +274,100 @@
         }
 
         updatedRows = [];
-        let count = 0;
+        filteredData = [csvData[0]];
+        const updatedHandles = new Set();
+        const updatedSKUSet = new Set();
 
         for (let i = 1; i < csvData.length; i++) {
           const sku = csvData[i][17];
+          const handle = csvData[i][0];
           const u = sku && map[sku.toString().trim()];
-          if (u) {
-            let changed = false;
+          if (!u) continue;
 
-            if (hasValue(u.p)) {
-              csvData[i][23] = u.p;
-              changed = true;
-            }
-            if (hasValue(u.c)) {
-              csvData[i][24] = u.c;
-              changed = true;
-            }
-            if (hasValue(u.q)) {
-              csvData[i][20] = u.q;
-              changed = true;
-            }
+          let changed = false;
+          if (hasValue(u.p)) {
+            csvData[i][23] = u.p;
+            changed = true;
+          }
+          if (hasValue(u.c)) {
+            csvData[i][24] = u.c;
+            changed = true;
+          }
+          if (hasValue(u.q)) {
+            csvData[i][20] = u.q;
+            changed = true;
+          }
 
-            if (changed) {
+          if (changed) {
+            updatedHandles.add(handle);
+            if (!updatedSKUSet.has(sku)) {
+              updatedSKUSet.add(sku);
               updatedRows.push([
                 sku,
-                hasValue(u.p) ? u.p : "(giữ nguyên)",
-                hasValue(u.c) ? u.c : "(giữ nguyên)",
-                hasValue(u.q) ? u.q : "(giữ nguyên)",
+                u.p || "(giữ)",
+                u.c || "(giữ)",
+                u.q || "(giữ)",
               ]);
-              count++;
             }
           }
         }
 
-        status.innerHTML = `<span class="success">✅ Đã cập nhật ${count} SKU</span>`;
+        for (let i = 1; i < csvData.length; i++) {
+          if (updatedHandles.has(csvData[i][0])) filteredData.push(csvData[i]);
+        }
+
+        status.innerHTML = `<span class="success">✅ Đã cập nhật ${updatedSKUSet.size} SKU (${updatedSKUSet.size} mẫu)</span>`;
         renderPreview();
         exportFile();
       }
 
       function renderPreview() {
-        let html = `<h3>🔍 Preview dữ liệu đã cập nhật</h3>
-        <table>
-          <tr>
-            <th>SKU</th><th>Giá giảm</th><th>Giá gốc</th><th>Tồn kho</th>
-          </tr>`;
-        updatedRows.forEach((r) => {
-          html += `<tr>${r.map((v) => `<td>${v}</td>`).join("")}</tr>`;
+        let html = `<h3>🔍 Preview SKU đã cập nhật</h3><table>
+        <tr><th>STT</th><th>SKU</th><th>Giá giảm</th><th>Giá gốc</th><th>Tồn kho</th></tr>`;
+        updatedRows.forEach((r, i) => {
+          html += `<tr><td>${i + 1}</td><td>${r[0]}</td><td>${r[1]}</td><td>${
+            r[2]
+          }</td><td>${r[3]}</td></tr>`;
         });
-        html += "</table>";
+        html += `</table>`;
         preview.innerHTML = html;
       }
 
       function exportFile() {
-        const type = document.getElementById("exportType").value;
-        const sheet = XLSX.utils.aoa_to_sheet(csvData);
-        const ts = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 16);
+        const type = exportType.value;
+        const scope = document.querySelector(
+          'input[name="exportScope"]:checked'
+        ).value;
+        const data = scope === "updated" ? filteredData : csvData;
+        const sheet = XLSX.utils.aoa_to_sheet(data);
+        const ts = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
 
         if (type === "csv") {
           const csv = XLSX.utils.sheet_to_csv(sheet);
-          download(csv, `SHOPIFY_UPDATED_${ts}.csv`, "text/csv");
+          download(csv, `SHOPIFY_${scope}_${ts}.csv`, "text/csv");
         } else {
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, sheet, "Updated");
-          XLSX.writeFile(wb, `SHOPIFY_UPDATED_${ts}.xlsx`);
+          XLSX.writeFile(wb, `SHOPIFY_${scope}_${ts}.xlsx`);
         }
       }
 
       function download(c, n, t) {
-        const b = new Blob([c], { type: t });
         const a = document.createElement("a");
-        a.href = URL.createObjectURL(b);
+        a.href = URL.createObjectURL(new Blob([c], { type: t }));
         a.download = n;
         a.click();
       }
 
       function previewUpdateTemplate(e) {
-        e.stopPropagation(); // ⭐ chặn click lan lên dropzone
-
-        if (isPreviewTemplateVisible) {
-          preview.innerHTML = "";
-          isPreviewTemplateVisible = false;
-          return;
-        }
-
+        e.stopPropagation();
         preview.innerHTML = `
-          <h3>📄 Preview cấu trúc file cập nhật</h3>
-          <table>
-            <tr>
-              <th>SKU (A)</th>
-              <th>Giá giảm (B)</th>
-              <th>Giá gốc (C)</th>
-              <th>Tồn kho (D)</th>
-            </tr>
-            <tr>
-              <td>LM-001</td>
-              <td>1200000</td>
-              <td>1500000</td>
-              <td>10</td>
-            </tr>
-            <tr>
-              <td>LM-002</td>
-              <td></td>
-              <td>1800000</td>
-              <td></td>
-            </tr>
-          </table>
-          <div class="small" style="margin-top:6px">
-            * Ô trống sẽ được giữ nguyên giá trị cũ trong Shopify
-          </div>
-        `;
-        isPreviewTemplateVisible = true;
+        <h3>📄 Preview file cập nhật</h3>
+        <table>
+          <tr><th>SKU</th><th>Giá giảm</th><th>Giá gốc</th><th>Tồn kho</th></tr>
+          <tr><td>LM-001</td><td>1200000</td><td>1500000</td><td>10</td></tr>
+          <tr><td>LM-002</td><td></td><td>1800000</td><td></td></tr>
+        </table>`;
       }
     </script>
   </body>
