@@ -153,11 +153,14 @@
         width: 100%;
         border-collapse: collapse;
         font-size: 13px;
+        table-layout: fixed;
       }
       th,
       td {
         padding: 10px;
         border-bottom: 1px solid var(--border);
+        text-align: center;
+        vertical-align: middle;
       }
       th {
         background: rgba(0, 0, 0, 0.05);
@@ -189,7 +192,6 @@
       <h1>📦 Cập nhật Giá/Tồn Kho</h1>
 
       <div class="card">
-        <!-- Upload master file -->
         <div class="file-row">
           <label class="file-btn">
             📂 Chọn file CSV
@@ -198,23 +200,20 @@
           <span class="file-name" id="fileName">Chưa chọn file</span>
         </div>
 
-        <!-- Chọn phương án cập nhật -->
         <div class="section-title">⚡ Chọn phương án cập nhật Giá/Tồn kho</div>
         <div class="actions">
-          <label>
-            <input type="radio" name="updateMode" value="vendor" /> Cập nhật
-            theo Vendor
-          </label>
-          <label>
-            <input type="radio" name="updateMode" value="file" /> Cập nhật bằng
-            file Giá/Tồn kho
-          </label>
+          <label
+            ><input type="radio" name="updateMode" value="vendor" /> Cập nhật
+            theo Vendor</label
+          >
+          <label
+            ><input type="radio" name="updateMode" value="file" /> Cập nhật bằng
+            file Giá/Tồn kho</label
+          >
         </div>
 
-        <!-- Vendor % Grid -->
         <div id="vendorSection" class="vendor-grid hidden"></div>
 
-        <!-- File update -->
         <div id="fileSection" class="file-row hidden">
           <label class="file-btn">
             📂 Chọn file cập nhật XLSX
@@ -227,31 +226,32 @@
           </p>
         </div>
 
-        <!-- Export options -->
         <div class="actions">
           <select id="exportType">
             <option value="csv">CSV</option>
             <option value="xlsx">XLSX</option>
           </select>
           <div>
-            <label>
-              <input type="radio" name="exportScope" value="updated" checked />
-              Chỉ các mẫu thay đổi giá
-            </label>
-            <label>
-              <input type="radio" name="exportScope" value="all" /> Toàn bộ file
-            </label>
+            <label
+              ><input type="radio" name="exportScope" value="updated" checked />
+              Chỉ các mẫu thay đổi giá</label
+            >
+            <label
+              ><input type="radio" name="exportScope" value="all" /> Toàn bộ
+              file</label
+            >
           </div>
         </div>
 
-        <!-- Buttons -->
         <div class="actions">
           <button class="main" id="processBtn">⚡ Xử lý & Preview</button>
           <button class="outline" id="undoBtn">↩ Undo</button>
-          <button class="main" id="exportBtn">⬇ Tải file</button>
+          <button class="main" id="exportBtn">⬇ Tải file Shopify</button>
+          <button class="main" id="exportMaisonBtn">
+            ⬇ Tải file Maison/Gosumo
+          </button>
         </div>
 
-        <!-- Preview table -->
         <div class="table-wrap">
           <table id="previewTable"></table>
         </div>
@@ -263,6 +263,7 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script>
+      // DARK MODE
       if (localStorage.theme === "dark") document.body.classList.add("dark");
       const themeToggle = document.getElementById("themeToggle");
       themeToggle.onclick = () => {
@@ -272,13 +273,19 @@
           : "light";
       };
 
-      // DATA
+      // ANTI F12 / RIGHT CLICK
+      document.addEventListener("contextmenu", (e) => e.preventDefault());
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I"))
+          e.preventDefault();
+      });
+
       let master = [],
         backup = [],
         result = [],
         fileUpdateData = [];
-      let updatedHandles = new Set();
-      let updatedSKUSet = new Set();
+      let updatedHandles = new Set(),
+        updatedSKUSet = new Set();
       const vendors = [
         "ADIDAS",
         "FERRAGAMO",
@@ -293,16 +300,10 @@
       const vendorSection = document.getElementById("vendorSection");
       const fileSection = document.getElementById("fileSection");
 
-      // Render vendor inputs
       vendors.forEach((v) => {
-        vendorSection.innerHTML += `
-          <div class="field">
-            <label>${v} (%)</label>
-            <input type="number" id="v_${v}" min="0" max="100">
-          </div>`;
+        vendorSection.innerHTML += `<div class="field"><label>${v} (%)</label><input type="number" id="v_${v}" min="0" max="100"></div>`;
       });
 
-      // Show/hide sections
       document.querySelectorAll('input[name="updateMode"]').forEach((radio) => {
         radio.addEventListener("change", () => {
           if (radio.value === "vendor") {
@@ -315,12 +316,12 @@
         });
       });
 
-      const fileInput = document.getElementById("fileInput");
-      const fileName = document.getElementById("fileName");
-      const updateFile = document.getElementById("updateFile");
-      const updateFileName = document.getElementById("updateFileName");
-      const previewTable = document.getElementById("previewTable");
-      const exportType = document.getElementById("exportType");
+      const fileInput = document.getElementById("fileInput"),
+        fileName = document.getElementById("fileName");
+      const updateFile = document.getElementById("updateFile"),
+        updateFileName = document.getElementById("updateFileName");
+      const previewTable = document.getElementById("previewTable"),
+        exportType = document.getElementById("exportType");
 
       fileInput.onchange = () => {
         const f = fileInput.files[0];
@@ -367,6 +368,7 @@
       document.getElementById("processBtn").onclick = processData;
       document.getElementById("undoBtn").onclick = undo;
       document.getElementById("exportBtn").onclick = exportFile;
+      document.getElementById("exportMaisonBtn").onclick = exportMaison;
 
       function processData() {
         if (!master.length) return alert("Chưa có file master");
@@ -394,6 +396,8 @@
                 0
             );
             if (p && r["Variant Compare At Price"]) {
+              if (r["Variant Price"] > r["Variant Compare At Price"])
+                r["Variant Compare At Price"] = r["Variant Price"];
               r["Variant Price"] = Math.round(
                 (r["Variant Compare At Price"] * (100 - p)) / 100
               );
@@ -404,6 +408,8 @@
                 Vendor: r.Vendor,
                 "Giá Giảm": money(r["Variant Price"]),
                 "Giá Gốc": money(r["Variant Compare At Price"]),
+                "Tồn kho": r["Variant Inventory Qty"] || "",
+                Status: r.Status || "",
               });
             }
           });
@@ -439,12 +445,19 @@
                 updatedHandles.add(r.Handle);
                 if (!updatedSKUSet.has(r["Variant SKU"])) {
                   updatedSKUSet.add(r["Variant SKU"]);
+                  const masterRow = master.find(
+                    (m) => m["Variant SKU"] === r["Variant SKU"]
+                  );
                   preview.push({
                     STT: i++,
                     SKU: r["Variant SKU"],
                     "Giá Giảm": money(r["Variant Price"]),
                     "Giá Gốc": money(r["Variant Compare At Price"]),
-                    "Tồn kho": r["Inventory Quantity"] || "(giữ)",
+                    "Tồn kho":
+                      r["Inventory Quantity"] ||
+                      masterRow?.["Variant Inventory Qty"] ||
+                      "",
+                    Status: r.Status || masterRow?.Status || "",
                   });
                 }
               }
@@ -485,9 +498,9 @@
         ).value;
         const type = exportType.value;
         let data = [];
-        if (scope === "updated") {
+        if (scope === "updated")
           data = result.filter((r) => updatedHandles.has(r.Handle));
-        } else data = result;
+        else data = result;
         if (!data.length) return alert("Không có dữ liệu để xuất");
 
         const ws = XLSX.utils.json_to_sheet(data);
@@ -506,6 +519,53 @@
           a.click();
           document.body.removeChild(a);
         } else XLSX.writeFile(wb, `WatchPrice_${scope}_${ts}.xlsx`);
+      }
+
+      function exportMaison() {
+        if (!result.length) return alert("Chưa có dữ liệu");
+        const changedData = result.filter((r) => updatedHandles.has(r.Handle));
+        if (!changedData.length)
+          return alert("Không có sản phẩm nào thay đổi giá để xuất");
+
+        const brands = [
+          ...new Set(changedData.map((r) => r.Vendor).filter((v) => v)),
+        ];
+        const wb = XLSX.utils.book_new();
+
+        brands.forEach((b) => {
+          const data = changedData.filter((r) => r.Vendor === b);
+          if (!data.length) return;
+          const sheetData = data.map((r, i) => {
+            if (r["Variant Price"] > r["Variant Compare At Price"])
+              r["Variant Compare At Price"] = r["Variant Price"];
+            const masterRow = master.find(
+              (m) => m["Variant SKU"] === r["Variant SKU"]
+            );
+            return {
+              STT: i + 1,
+              SKU: r["Variant SKU"],
+              "Giá Giảm": r["Variant Price"] || "",
+              "Giá Gốc": r["Variant Compare At Price"] || "",
+              "% giảm": r["Variant Compare At Price"]
+                ? Math.round(
+                    ((r["Variant Compare At Price"] - r["Variant Price"]) *
+                      100) /
+                      r["Variant Compare At Price"]
+                  )
+                : "",
+              "Tồn kho":
+                r["Variant Inventory Qty"] ||
+                masterRow?.["Variant Inventory Qty"] ||
+                "",
+              Status: r.Status || masterRow?.Status || "",
+            };
+          });
+          const ws = XLSX.utils.json_to_sheet(sheetData);
+          XLSX.utils.book_append_sheet(wb, ws, b);
+        });
+
+        const ts = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+        XLSX.writeFile(wb, `Maison_Gosumo_Updated_${ts}.xlsx`);
       }
 
       function undo() {
