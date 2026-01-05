@@ -1,373 +1,518 @@
 <!DOCTYPE html>
-<html lang="vi" data-theme="dark">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <title>Update Giá & Tồn Kho theo SKU</title>
-
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
+    <title>Cập nhật Giá/Tồn Kho</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       :root {
+        --bg: #f6f6f7;
+        --card: #fff;
+        --text: #202223;
+        --muted: #6d7175;
+        --border: #e1e3e5;
+        --primary: #008060;
+        --radius: 12px;
+      }
+      body.dark {
         --bg: #0f172a;
         --card: #020617;
-        --border: #334155;
         --text: #e5e7eb;
         --muted: #94a3b8;
-        --primary: #38bdf8;
-        --success: #22c55e;
-      }
-      [data-theme="light"] {
-        --bg: #f8fafc;
-        --card: #ffffff;
-        --border: #cbd5e1;
-        --text: #0f172a;
-        --muted: #475569;
-        --primary: #2563eb;
-        --success: #16a34a;
-      }
-      * {
-        box-sizing: border-box;
-        font-family: system-ui;
+        --border: #1e293b;
+        --primary: #10b981;
       }
       body {
         margin: 0;
-        padding: 24px;
+        font-family: Inter, system-ui;
         background: var(--bg);
         color: var(--text);
       }
       .container {
-        max-width: 1100px;
+        max-width: 1200px;
         margin: auto;
+        padding: 24px;
       }
       .card {
         background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
         padding: 24px;
-        border-radius: 16px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
       }
       h1 {
+        margin-bottom: 20px;
         text-align: center;
-        margin-top: 0;
       }
-      .dropzone {
-        border: 2px dashed var(--border);
-        border-radius: 14px;
-        padding: 24px;
-        text-align: center;
-        margin-bottom: 16px;
+      button {
         cursor: pointer;
-      }
-      .dropzone.drag {
-        border-color: var(--primary);
-        background: rgba(56, 189, 248, 0.1);
-      }
-      .dropzone input {
-        display: none;
-      }
-      .label {
         font-weight: 600;
-      }
-      .small {
-        font-size: 13px;
-        color: var(--muted);
-      }
-      .controls {
-        display: flex;
-        gap: 16px;
-        flex-wrap: wrap;
-        margin-top: 16px;
-        align-items: center;
-      }
-      button,
-      select {
-        padding: 10px 14px;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: none;
-        color: var(--text);
-        cursor: pointer;
       }
       button.main {
         background: var(--primary);
+        color: #fff;
         border: none;
-        color: #020617;
-        font-weight: 600;
+        padding: 10px 16px;
+        border-radius: 10px;
+        transition: 0.2s;
       }
-      button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
+      button.main:hover {
+        opacity: 0.85;
+      }
+      button.outline {
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--border);
+        padding: 10px 16px;
+        border-radius: 10px;
+        transition: 0.2s;
+      }
+      button.outline:hover {
+        background: var(--primary);
+        color: #fff;
+        border: 1px solid var(--primary);
+      }
+      .toggle {
+        float: right;
+        margin-bottom: 10px;
+      }
+      .file-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .file-btn input[type="file"] {
+        display: none;
+      }
+      .file-btn {
+        display: inline-block;
+        padding: 12px 20px;
+        border: 2px dashed var(--primary);
+        border-radius: 10px;
+        background: #fff;
+        color: var(--primary);
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        text-align: center;
+        transition: 0.2s;
+      }
+      .file-btn:hover {
+        background: var(--primary);
+        color: #fff;
+        border-color: #006644;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      }
+      .file-name {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .vendor-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .field label {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .field input {
+        height: 40px;
+        padding: 0 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+      }
+      .field input:focus {
+        outline: none;
+        border-color: var(--primary);
+      }
+      .actions {
+        margin-top: 20px;
+        margin-bottom: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+      .table-wrap {
+        margin-top: 20px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        max-height: 320px;
+        overflow: auto;
       }
       table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 16px;
         font-size: 13px;
       }
       th,
       td {
-        border: 1px solid var(--border);
-        padding: 6px 8px;
-        text-align: center;
+        padding: 10px;
+        border-bottom: 1px solid var(--border);
       }
       th {
-        background: rgba(148, 163, 184, 0.15);
-      }
-      .status {
-        margin-top: 12px;
-        font-size: 14px;
-      }
-      .success {
-        color: var(--success);
+        background: rgba(0, 0, 0, 0.05);
       }
       .footer {
         text-align: center;
         font-size: 12px;
         color: var(--muted);
-        margin-top: 24px;
+        margin-top: 20px;
       }
-      .theme-toggle {
-        border-radius: 999px;
-        padding: 6px 14px;
+      select,
+      input[type="number"] {
+        padding: 8px 12px;
+        border-radius: 8px;
         border: 1px solid var(--border);
+      }
+      .hidden {
+        display: none;
+      }
+      .section-title {
+        font-weight: 600;
+        margin-bottom: 8px;
       }
     </style>
   </head>
-
   <body>
     <div class="container">
+      <button class="outline toggle" id="themeToggle">🌗</button>
+      <h1>📦 Cập nhật Giá/Tồn Kho</h1>
+
       <div class="card">
-        <div style="display: flex; justify-content: flex-end">
-          <button class="theme-toggle" id="themeToggle">🌙 Dark</button>
+        <!-- Upload master file -->
+        <div class="file-row">
+          <label class="file-btn">
+            📂 Chọn file CSV
+            <input type="file" id="fileInput" accept=".csv" />
+          </label>
+          <span class="file-name" id="fileName">Chưa chọn file</span>
         </div>
 
-        <h1>📦 Update Giá & Tồn Kho theo SKU</h1>
-
-        <div class="dropzone" id="csvZone">
-          <div class="label">📄 File tổng sản phẩm trên Shopify</div>
-          <div class="small">CSV – kéo thả hoặc click</div>
-          <input type="file" accept=".csv" />
+        <!-- Chọn phương án cập nhật -->
+        <div class="section-title">⚡ Chọn phương án cập nhật Giá/Tồn kho</div>
+        <div class="actions">
+          <label>
+            <input type="radio" name="updateMode" value="vendor" /> Cập nhật
+            theo Vendor
+          </label>
+          <label>
+            <input type="radio" name="updateMode" value="file" /> Cập nhật bằng
+            file Giá/Tồn kho
+          </label>
         </div>
 
-        <div class="dropzone" id="excelZone">
-          <div class="label">📊 File cập nhật giá/tồn kho</div>
-          <div class="small">XLSX / XLS</div>
-          <input type="file" accept=".xlsx,.xls" />
+        <!-- Vendor % Grid -->
+        <div id="vendorSection" class="vendor-grid hidden"></div>
+
+        <!-- File update -->
+        <div id="fileSection" class="file-row hidden">
+          <label class="file-btn">
+            📂 Chọn file cập nhật XLSX
+            <input type="file" id="updateFile" accept=".xlsx,.xls" />
+          </label>
+          <span class="file-name" id="updateFileName">Chưa chọn file</span>
+          <p style="font-size: 13px; color: #6d7175; margin-top: 10px">
+            📌 Ghi chú: Cột A = SKU | Cột B = Giá Giảm | Cột C = Giá Gốc | Cột D
+            = Tồn kho
+          </p>
         </div>
 
-        <button onclick="previewUpdateTemplate(event)">
-          👁 Preview file mẫu
-        </button>
-
-        <div class="controls">
-          <label
-            ><input type="radio" name="exportScope" value="updated" checked />
-            Export only SKU updated</label
-          >
-          <label
-            ><input type="radio" name="exportScope" value="full" /> Export full
-            file</label
-          >
-
+        <!-- Export options -->
+        <div class="actions">
           <select id="exportType">
             <option value="csv">CSV</option>
-            <option value="xlsx">Excel</option>
+            <option value="xlsx">XLSX</option>
           </select>
-
-          <button class="main" id="processBtn" disabled>
-            🚀 Update & Preview
-          </button>
+          <div>
+            <label>
+              <input type="radio" name="exportScope" value="updated" checked />
+              Chỉ các mẫu thay đổi giá
+            </label>
+            <label>
+              <input type="radio" name="exportScope" value="all" /> Toàn bộ file
+            </label>
+          </div>
         </div>
 
-        <div class="status" id="status"></div>
-        <div id="preview"></div>
+        <!-- Buttons -->
+        <div class="actions">
+          <button class="main" id="processBtn">⚡ Xử lý & Preview</button>
+          <button class="outline" id="undoBtn">↩ Undo</button>
+          <button class="main" id="exportBtn">⬇ Tải file</button>
+        </div>
 
-        <div class="footer">© Designed by GiaQuyenVan</div>
+        <!-- Preview table -->
+        <div class="table-wrap">
+          <table id="previewTable"></table>
+        </div>
       </div>
+
+      <div class="footer">Designed by GiaQuyenVan</div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script>
-      const root = document.documentElement;
-      const toggle = document.getElementById("themeToggle");
-      const saved = localStorage.getItem("theme") || "dark";
-      root.setAttribute("data-theme", saved);
-      toggle.innerText = saved === "dark" ? "🌙 Dark" : "☀️ Light";
-      toggle.onclick = () => {
-        const t = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
-        root.setAttribute("data-theme", t);
-        localStorage.setItem("theme", t);
-        toggle.innerText = t === "dark" ? "🌙 Dark" : "☀️ Light";
+      if (localStorage.theme === "dark") document.body.classList.add("dark");
+      const themeToggle = document.getElementById("themeToggle");
+      themeToggle.onclick = () => {
+        document.body.classList.toggle("dark");
+        localStorage.theme = document.body.classList.contains("dark")
+          ? "dark"
+          : "light";
       };
 
-      let csvData, excelData;
-      let updatedRows = [],
-        filteredData = [];
-      const btn = document.getElementById("processBtn");
-      const preview = document.getElementById("preview");
-      const status = document.getElementById("status");
+      // DATA
+      let master = [],
+        backup = [],
+        result = [],
+        fileUpdateData = [];
+      let updatedHandles = new Set();
+      let updatedSKUSet = new Set();
+      const vendors = [
+        "ADIDAS",
+        "FERRAGAMO",
+        "FURLA",
+        "PHILIPP PLEIN",
+        "TED BAKER",
+        "VERSACE",
+        "LOCMAN",
+        "GUESS",
+        "MISSONI",
+      ];
+      const vendorSection = document.getElementById("vendorSection");
+      const fileSection = document.getElementById("fileSection");
 
-      setup("csvZone", (f) =>
-        readCSV(f, (d) => {
-          csvData = d;
-          check();
-        })
-      );
-      setup("excelZone", (f) =>
-        readExcel(f, (d) => {
-          excelData = d;
-          check();
-        })
-      );
-      btn.onclick = updateData;
+      // Render vendor inputs
+      vendors.forEach((v) => {
+        vendorSection.innerHTML += `
+          <div class="field">
+            <label>${v} (%)</label>
+            <input type="number" id="v_${v}" min="0" max="100">
+          </div>`;
+      });
 
-      function check() {
-        btn.disabled = !(csvData && excelData);
-      }
+      // Show/hide sections
+      document.querySelectorAll('input[name="updateMode"]').forEach((radio) => {
+        radio.addEventListener("change", () => {
+          if (radio.value === "vendor") {
+            vendorSection.classList.remove("hidden");
+            fileSection.classList.add("hidden");
+          } else {
+            fileSection.classList.remove("hidden");
+            vendorSection.classList.add("hidden");
+          }
+        });
+      });
 
-      function setup(id, cb) {
-        const z = document.getElementById(id);
-        const i = z.querySelector("input");
-        z.onclick = () => i.click();
-        z.ondragover = (e) => {
-          e.preventDefault();
-          z.classList.add("drag");
-        };
-        z.ondragleave = () => z.classList.remove("drag");
-        z.ondrop = (e) => {
-          e.preventDefault();
-          z.classList.remove("drag");
-          cb(e.dataTransfer.files[0]);
-        };
-        i.onchange = () => cb(i.files[0]);
-      }
+      const fileInput = document.getElementById("fileInput");
+      const fileName = document.getElementById("fileName");
+      const updateFile = document.getElementById("updateFile");
+      const updateFileName = document.getElementById("updateFileName");
+      const previewTable = document.getElementById("previewTable");
+      const exportType = document.getElementById("exportType");
 
-      function readCSV(f, cb) {
-        const r = new FileReader();
-        r.onload = (e) => {
-          const wb = XLSX.read(e.target.result, { type: "string" });
-          cb(
-            XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 })
-          );
-        };
-        r.readAsText(f);
-      }
+      fileInput.onchange = () => {
+        const f = fileInput.files[0];
+        if (!f) return;
+        if (!f.name.toLowerCase().endsWith(".csv"))
+          return alert("Chỉ cho phép file CSV!");
+        fileName.textContent = f.name;
+        Papa.parse(f, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (r) => {
+            master = r.data;
+            backup = JSON.parse(JSON.stringify(master));
+            updatedHandles.clear();
+            previewTable.innerHTML = "";
+          },
+        });
+      };
 
-      function readExcel(f, cb) {
-        const r = new FileReader();
-        r.onload = (e) => {
+      updateFile.onchange = () => {
+        const f = updateFile.files[0];
+        if (!f) return;
+        if (
+          !f.name.toLowerCase().endsWith(".xlsx") &&
+          !f.name.toLowerCase().endsWith(".xls")
+        )
+          return alert("Chỉ cho phép file XLSX/XLS!");
+        updateFileName.textContent = f.name;
+        const reader = new FileReader();
+        reader.onload = (e) => {
           const wb = XLSX.read(new Uint8Array(e.target.result), {
             type: "array",
           });
-          cb(
-            XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 })
+          fileUpdateData = XLSX.utils.sheet_to_json(
+            wb.Sheets[wb.SheetNames[0]],
+            { header: 1 }
           );
         };
-        r.readAsArrayBuffer(f);
-      }
+        reader.readAsArrayBuffer(f);
+      };
 
-      const hasValue = (v) => v !== "" && v !== null && v !== undefined;
+      const money = (n) => Number(n || 0).toLocaleString("vi-VN");
 
-      function updateData() {
-        const map = {};
-        for (let i = 1; i < excelData.length; i++) {
-          const [sku, p, c, q] = excelData[i];
-          if (sku) map[sku.toString().trim()] = { p, c, q };
-        }
+      document.getElementById("processBtn").onclick = processData;
+      document.getElementById("undoBtn").onclick = undo;
+      document.getElementById("exportBtn").onclick = exportFile;
 
-        updatedRows = [];
-        filteredData = [csvData[0]];
-        const updatedHandles = new Set();
-        const updatedSKUSet = new Set();
+      function processData() {
+        if (!master.length) return alert("Chưa có file master");
+        const selectedMode = document.querySelector(
+          'input[name="updateMode"]:checked'
+        )?.value;
+        if (!selectedMode) return alert("Chọn phương án cập nhật");
 
-        for (let i = 1; i < csvData.length; i++) {
-          const sku = csvData[i][17];
-          const handle = csvData[i][0];
-          const u = sku && map[sku.toString().trim()];
-          if (!u) continue;
+        result = JSON.parse(JSON.stringify(master));
+        updatedHandles.clear();
+        updatedSKUSet.clear();
+        let preview = [];
+        let i = 1;
 
-          let changed = false;
-          if (hasValue(u.p)) {
-            csvData[i][23] = u.p;
-            changed = true;
-          }
-          if (hasValue(u.c)) {
-            csvData[i][24] = u.c;
-            changed = true;
-          }
-          if (hasValue(u.q)) {
-            csvData[i][20] = u.q;
-            changed = true;
-          }
-
-          if (changed) {
-            updatedHandles.add(handle);
-            if (!updatedSKUSet.has(sku)) {
-              updatedSKUSet.add(sku);
-              updatedRows.push([
-                sku,
-                u.p || "(giữ)",
-                u.c || "(giữ)",
-                u.q || "(giữ)",
-              ]);
+        if (selectedMode === "vendor") {
+          result.forEach((r) => {
+            if (
+              r["Product Category"] !==
+              "Apparel & Accessories > Jewelry > Watches"
+            )
+              return;
+            if (!r["Variant SKU"]) return;
+            const p = Number(
+              document.getElementById("v_" + r.Vendor?.toUpperCase())?.value ||
+                0
+            );
+            if (p && r["Variant Compare At Price"]) {
+              r["Variant Price"] = Math.round(
+                (r["Variant Compare At Price"] * (100 - p)) / 100
+              );
+              updatedHandles.add(r.Handle);
+              preview.push({
+                STT: i++,
+                SKU: r["Variant SKU"],
+                Vendor: r.Vendor,
+                "Giá Giảm": money(r["Variant Price"]),
+                "Giá Gốc": money(r["Variant Compare At Price"]),
+              });
             }
+          });
+        } else if (selectedMode === "file" && fileUpdateData.length) {
+          const map = {};
+          for (let j = 1; j < fileUpdateData.length; j++) {
+            const [sku, p, c, q] = fileUpdateData[j];
+            if (sku) map[sku.toString().trim()] = { p, c, q };
           }
+          result.forEach((r) => {
+            if (
+              r["Product Category"] !==
+              "Apparel & Accessories > Jewelry > Watches"
+            )
+              return;
+            if (!r["Variant SKU"]) return;
+            const u = map[r["Variant SKU"]];
+            if (u) {
+              let changed = false;
+              if (u.p !== "") {
+                r["Variant Price"] = Number(u.p);
+                changed = true;
+              }
+              if (u.c !== "") {
+                r["Variant Compare At Price"] = Number(u.c);
+                changed = true;
+              }
+              if (u.q !== "") {
+                r["Inventory Quantity"] = Number(u.q);
+                changed = true;
+              }
+              if (changed) {
+                updatedHandles.add(r.Handle);
+                if (!updatedSKUSet.has(r["Variant SKU"])) {
+                  updatedSKUSet.add(r["Variant SKU"]);
+                  preview.push({
+                    STT: i++,
+                    SKU: r["Variant SKU"],
+                    "Giá Giảm": money(r["Variant Price"]),
+                    "Giá Gốc": money(r["Variant Compare At Price"]),
+                    "Tồn kho": r["Inventory Quantity"] || "(giữ)",
+                  });
+                }
+              }
+            }
+          });
         }
 
-        for (let i = 1; i < csvData.length; i++) {
-          if (updatedHandles.has(csvData[i][0])) filteredData.push(csvData[i]);
-        }
-
-        status.innerHTML = `<span class="success">✅ Đã cập nhật ${updatedSKUSet.size} SKU (${updatedSKUSet.size} mẫu)</span>`;
-        renderPreview();
-        exportFile();
+        renderPreview(preview);
       }
 
-      function renderPreview() {
-        let html = `<h3>🔍 Preview SKU đã cập nhật</h3><table>
-        <tr><th>STT</th><th>SKU</th><th>Giá giảm</th><th>Giá gốc</th><th>Tồn kho</th></tr>`;
-        updatedRows.forEach((r, i) => {
-          html += `<tr><td>${i + 1}</td><td>${r[0]}</td><td>${r[1]}</td><td>${
-            r[2]
-          }</td><td>${r[3]}</td></tr>`;
-        });
-        html += `</table>`;
-        preview.innerHTML = html;
+      function renderPreview(rows) {
+        if (!rows.length) {
+          previewTable.innerHTML = "";
+          return;
+        }
+        previewTable.innerHTML =
+          "<tr>" +
+          Object.keys(rows[0])
+            .map((h) => `<th>${h}</th>`)
+            .join("") +
+          "</tr>" +
+          rows
+            .map(
+              (r) =>
+                "<tr>" +
+                Object.values(r)
+                  .map((v) => `<td>${v}</td>`)
+                  .join("") +
+                "</tr>"
+            )
+            .join("");
       }
 
       function exportFile() {
-        const type = exportType.value;
+        if (!result.length) return alert("Chưa có dữ liệu");
         const scope = document.querySelector(
           'input[name="exportScope"]:checked'
         ).value;
-        const data = scope === "updated" ? filteredData : csvData;
-        const sheet = XLSX.utils.aoa_to_sheet(data);
+        const type = exportType.value;
+        let data = [];
+        if (scope === "updated") {
+          data = result.filter((r) => updatedHandles.has(r.Handle));
+        } else data = result;
+        if (!data.length) return alert("Không có dữ liệu để xuất");
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Updated");
         const ts = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
 
         if (type === "csv") {
-          const csv = XLSX.utils.sheet_to_csv(sheet);
-          download(csv, `SHOPIFY_${scope}_${ts}.csv`, "text/csv");
-        } else {
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, sheet, "Updated");
-          XLSX.writeFile(wb, `SHOPIFY_${scope}_${ts}.xlsx`);
-        }
+          const csv = XLSX.utils.sheet_to_csv(ws);
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(
+            new Blob([csv], { type: "text/csv;charset=utf-8" })
+          );
+          a.download = `WatchPrice_${scope}_${ts}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        } else XLSX.writeFile(wb, `WatchPrice_${scope}_${ts}.xlsx`);
       }
 
-      function download(c, n, t) {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(new Blob([c], { type: t }));
-        a.download = n;
-        a.click();
-      }
-
-      function previewUpdateTemplate(e) {
-        e.stopPropagation();
-        preview.innerHTML = `
-        <h3>📄 Preview file cập nhật</h3>
-        <table>
-          <tr><th>SKU</th><th>Giá giảm</th><th>Giá gốc</th><th>Tồn kho</th></tr>
-          <tr><td>LM-001</td><td>1200000</td><td>1500000</td><td>10</td></tr>
-          <tr><td>LM-002</td><td></td><td>1800000</td><td></td></tr>
-        </table>`;
+      function undo() {
+        result = JSON.parse(JSON.stringify(backup));
+        updatedHandles.clear();
+        updatedSKUSet.clear();
+        previewTable.innerHTML = "";
       }
     </script>
   </body>
