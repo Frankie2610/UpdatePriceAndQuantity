@@ -437,10 +437,10 @@
                 r["Variant Compare At Price"] = Number(u.c);
                 changed = true;
               }
-              if (u.q !== "") {
-                r["Inventory Quantity"] = Number(u.q);
-                changed = true;
-              }
+              // if (u.q !== "") {
+              //   r["Inventory Quantity"] = Number(u.q);
+              //   changed = true;
+              // }
               if (changed) {
                 updatedHandles.add(r.Handle);
                 if (!updatedSKUSet.has(r["Variant SKU"])) {
