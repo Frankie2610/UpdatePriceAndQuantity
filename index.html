@@ -545,7 +545,7 @@
               STT: i + 1,
               SKU: r["Variant SKU"],
               "Giá Giảm": r["Variant Price"] || "",
-              "Giá Gốc": r["Variant Compare At Price"] || "",
+              "Giá Gốc": r["Variant Compare At Price"] || "0",
               "% giảm": r["Variant Compare At Price"]
                 ? Math.round(
                     ((r["Variant Compare At Price"] - r["Variant Price"]) *
