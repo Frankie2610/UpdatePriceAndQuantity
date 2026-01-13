@@ -429,14 +429,22 @@
             const u = map[r["Variant SKU"]];
             if (u) {
               let changed = false;
-              if (u.p !== "") {
+
+              // Giá giảm
+              if (u.p !== "" && u.p != null) {
                 r["Variant Price"] = Number(u.p);
-                changed = true;
+              } else {
+                r["Variant Price"] = 0; // nếu không có giá giảm
               }
-              if (u.c !== "") {
+              changed = true;
+
+              // Giá gốc
+              if (u.c !== "" && u.c != null) {
                 r["Variant Compare At Price"] = Number(u.c);
-                changed = true;
+              } else {
+                r["Variant Compare At Price"] = 0; // nếu không có giá gốc
               }
+              changed = true;
               // if (u.q !== "") {
               //   r["Inventory Quantity"] = Number(u.q);
               //   changed = true;
