@@ -405,11 +405,11 @@
               preview.push({
                 STT: i++,
                 SKU: r["Variant SKU"],
-                Vendor: r.Vendor,
-                "Giá Giảm": money(r["Variant Price"]),
-                "Giá Gốc": money(r["Variant Compare At Price"]),
-                "Tồn kho": r["Variant Inventory Qty"] || "",
-                Status: r.Status || "",
+                "Giá Giảm": money(r["Variant Price"]), // Giá mới sau cập nhật
+                "Giá Gốc": money(r["Variant Compare At Price"]), // Giá gốc mới sau cập nhật
+                "Tồn kho":
+                  r["Inventory Quantity"] || r["Variant Inventory Qty"] || "", // tồn kho mới
+                Status: r.Status || "", // Status mới
               });
             }
           });
@@ -483,6 +483,8 @@
               if (row) {
                 row["Published"] = "TRUE";
                 row["Status"] = "active";
+                p.Published = "TRUE"; // hiển thị luôn
+                p.Status = "active"; // hiển thị luôn
               }
             });
           }
