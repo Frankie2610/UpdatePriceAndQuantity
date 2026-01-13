@@ -71,6 +71,11 @@
         color: #fff;
         border: 1px solid var(--primary);
       }
+      button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
       .toggle {
         float: right;
         margin-bottom: 10px;
@@ -123,7 +128,7 @@
         color: var(--muted);
       }
       .field input {
-        height: 40px;
+        height: 15px;
         padding: 0 12px;
         border-radius: 10px;
         border: 1px solid var(--border);
@@ -136,7 +141,6 @@
       }
       .actions {
         margin-top: 20px;
-        margin-bottom: 20px;
         display: flex;
         flex-wrap: wrap;
         gap: 12px;
@@ -184,6 +188,15 @@
         font-weight: 600;
         margin-bottom: 8px;
       }
+      #singleCard,
+      #bulkCard,
+      #fileSection,
+      #vendorSection {
+        margin-top: 20px;
+      }
+      #skuInput {
+        height: 30px;
+      }
     </style>
   </head>
   <body>
@@ -200,17 +213,73 @@
           <span class="file-name" id="fileName">Chưa chọn file</span>
         </div>
 
-        <div class="section-title">⚡ Chọn phương án cập nhật Giá/Tồn kho</div>
-        <div class="actions">
+        <div class="card">
+          <div class="section-title">Chọn chế độ cập nhật</div>
           <label
-            ><input type="radio" name="updateMode" value="vendor" /> Cập nhật
-            theo Vendor</label
+            ><input type="radio" name="mode" value="bulk" /> Cập nhật hàng
+            loạt</label
           >
-          <label
-            ><input type="radio" name="updateMode" value="file" /> Cập nhật bằng
-            file Giá/Tồn kho</label
+          <label style="margin-left: 20px"
+            ><input type="radio" name="mode" value="single" /> Cập nhật SKU
+            lẻ</label
           >
         </div>
+
+        <!-- Card Bulk -->
+        <div class="card hidden" id="bulkCard">
+          <div class="section-title">⚡ Chọn phương án cập nhật</div>
+          <div class="actions">
+            <label
+              ><input type="radio" name="updateMode" value="vendor" /> Theo
+              Vendor</label
+            >
+            <label style="margin-left: 20px"
+              ><input type="radio" name="updateMode" value="file" /> Bằng file
+              Giá/Tồn kho</label
+            >
+          </div>
+
+          <div id="vendorSection" class="vendor-grid hidden"></div>
+
+          <div id="fileSection" class="file-row hidden">
+            <label class="file-btn">
+              📂 Chọn file cập nhật XLSX
+              <input type="file" id="updateFile" accept=".xlsx,.xls" />
+            </label>
+            <span class="file-name" id="updateFileName">Chưa chọn file</span>
+            <p style="font-size: 13px; color: #6d7175; margin-top: 10px">
+              📌 Cột A = SKU | Cột B = Giá Giảm | Cột C = Giá Gốc | Cột D = Tồn
+              kho
+            </p>
+          </div>
+        </div>
+
+        <!-- Card SKU lẻ -->
+        <div class="card hidden" id="singleCard">
+          <div class="field">
+            <label>Nhập SKU muốn giảm giá:</label>
+            <input
+              type="text"
+              id="skuInput"
+              placeholder="Nhập nhiều SKU cách nhau bằng dấu ,"
+            />
+          </div>
+          <div class="field" style="margin-top: 10px">
+            <label>Phần trăm giảm:</label>
+            <input
+              type="number"
+              id="skuDiscount"
+              min="0"
+              max="100"
+              placeholder="% giảm"
+            />
+          </div>
+          <div class="actions">
+            <button class="main" id="skuApplyBtn">OK</button>
+          </div>
+        </div>
+
+        <!-- Preview Table -->
 
         <div id="vendorSection" class="vendor-grid hidden"></div>
 
@@ -263,6 +332,9 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script>
+      let previewRows = [];
+      let singleSTT = 1;
+
       // DARK MODE
       if (localStorage.theme === "dark") document.body.classList.add("dark");
       const themeToggle = document.getElementById("themeToggle");
@@ -272,6 +344,28 @@
           ? "dark"
           : "light";
       };
+
+      // CHỈ CHỌN 1 CARD
+      const modeRadios = document.querySelectorAll('input[name="mode"]');
+      const bulkCard = document.getElementById("bulkCard");
+      const singleCard = document.getElementById("singleCard");
+      modeRadios.forEach((r) => {
+        r.addEventListener("change", () => {
+          if (r.value === "bulk") {
+            bulkCard.classList.remove("hidden");
+            singleCard.classList.add("hidden");
+
+            // ENABLE lại nút xử lý bulk
+            processBtn.disabled = false;
+          } else {
+            bulkCard.classList.add("hidden");
+            singleCard.classList.remove("hidden");
+
+            // DISABLE nút xử lý bulk khi chọn SKU lẻ
+            processBtn.disabled = true;
+          }
+        });
+      });
 
       // ANTI F12 / RIGHT CLICK
       document.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -363,7 +457,7 @@
         reader.readAsArrayBuffer(f);
       };
 
-      const money = (n) => Number(n || 0).toLocaleString("vi-VN");
+      const money = (n) => Number(n || 0).toLocaleString("en-US");
 
       document.getElementById("processBtn").onclick = processData;
       document.getElementById("undoBtn").onclick = undo;
@@ -372,9 +466,9 @@
 
       function processData() {
         if (!master.length) return alert("Chưa có file master");
-        const selectedMode = document.querySelector(
-          'input[name="updateMode"]:checked'
-        )?.value;
+        const selectedMode =
+          document.querySelector('input[name="updateMode"]:checked')?.value ||
+          document.querySelector('input[name="mode"]:checked')?.value;
         if (!selectedMode) return alert("Chọn phương án cập nhật");
 
         result = JSON.parse(JSON.stringify(master));
@@ -498,22 +592,21 @@
           previewTable.innerHTML = "";
           return;
         }
-        previewTable.innerHTML =
-          "<tr>" +
-          Object.keys(rows[0])
-            .map((h) => `<th>${h}</th>`)
-            .join("") +
-          "</tr>" +
-          rows
-            .map(
-              (r) =>
-                "<tr>" +
-                Object.values(r)
-                  .map((v) => `<td>${v}</td>`)
-                  .join("") +
-                "</tr>"
-            )
-            .join("");
+
+        const headers = Object.keys(rows[0]);
+
+        previewTable.innerHTML = `
+    <thead>
+      <tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr>
+    </thead>
+    <tbody>
+      ${rows
+        .map(
+          (r) => `<tr>${headers.map((h) => `<td>${r[h]}</td>`).join("")}</tr>`
+        )
+        .join("")}
+    </tbody>
+  `;
       }
 
       function exportFile() {
@@ -599,6 +692,61 @@
         updatedSKUSet.clear();
         previewTable.innerHTML = "";
       }
+      // ===== SKU LẺ =====
+      // ===== SKU LẺ (DÙNG CHUNG PREVIEW) =====
+      skuApplyBtn.onclick = () => {
+        if (!master.length) return alert("Chưa có file master");
+
+        const skus = skuInput.value
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        const percent = Number(skuDiscount.value);
+
+        if (!skus.length) return alert("Chưa nhập SKU nào!");
+        if (!percent) return alert("Chưa nhập % giảm!");
+
+        // ⚠️ Chỉ clone result 1 lần
+        if (!result.length) {
+          result = JSON.parse(JSON.stringify(master));
+        }
+
+        skus.forEach((sku) => {
+          if (updatedSKUSet.has(sku)) return;
+
+          const row = result.find((r) => r["Variant SKU"] === sku);
+          if (!row) return;
+
+          const oldPrice =
+            Number(row["Variant Compare At Price"]) ||
+            Number(row["Variant Price"]);
+
+          if (!oldPrice) return;
+
+          row["Variant Price"] = Math.round((oldPrice * (100 - percent)) / 100);
+          row["Status"] = "active";
+
+          updatedHandles.add(row.Handle);
+          updatedSKUSet.add(sku);
+
+          previewRows.push({
+            STT: singleSTT++,
+            "Mã SKU": sku,
+            "Giá Giảm": money(row["Variant Price"]),
+            "Giá Gốc": money(oldPrice),
+            "Tồn kho": row["Variant Inventory Qty"] || "",
+            Status: row.Status,
+          });
+        });
+
+        renderPreview(previewRows);
+
+        skuInput.value = "";
+        skuDiscount.value = "";
+
+        alert("Đã áp dụng SKU lẻ & cập nhật preview!");
+      };
     </script>
   </body>
 </html>
