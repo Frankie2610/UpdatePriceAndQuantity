@@ -434,7 +434,7 @@
               if (u.p !== "" && u.p != null) {
                 r["Variant Price"] = Number(u.p);
               } else {
-                r["Variant Price"] = 0; // nếu không có giá giảm
+                r["Variant Price"] = 0;
               }
               changed = true;
 
@@ -442,13 +442,10 @@
               if (u.c !== "" && u.c != null) {
                 r["Variant Compare At Price"] = Number(u.c);
               } else {
-                r["Variant Compare At Price"] = 0; // nếu không có giá gốc
+                r["Variant Compare At Price"] = 0;
               }
               changed = true;
-              // if (u.q !== "") {
-              //   r["Inventory Quantity"] = Number(u.q);
-              //   changed = true;
-              // }
+
               if (changed) {
                 updatedHandles.add(r.Handle);
                 if (!updatedSKUSet.has(r["Variant SKU"])) {
@@ -471,6 +468,25 @@
               }
             }
           });
+        }
+
+        // ✅ Hỏi user có muốn Publish các mẫu này không
+        if (preview.length) {
+          const publishChoice = window.confirm(
+            "Bạn có muốn Publish toàn bộ các mẫu này không?\nChọn 'OK' = Có, 'Cancel' = Giữ nguyên"
+          );
+
+          if (publishChoice) {
+            // Cập nhật tất cả các dòng trong result có trong preview
+            preview.forEach((p) => {
+              const row = result.find((r) => r["Variant SKU"] === p.SKU);
+              if (row) {
+                row["Published"] = "TRUE";
+                row["Status"] = "active";
+              }
+            });
+          }
+          // Nếu người dùng chọn Không, không làm gì, giữ nguyên giá trị
         }
 
         renderPreview(preview);
