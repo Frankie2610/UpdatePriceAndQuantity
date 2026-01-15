@@ -525,20 +525,30 @@
               let changed = false;
 
               // Giá giảm
-              if (u.p !== "" && u.p != null) {
+              if (u.p !== "" && u.p != null && !isNaN(u.p)) {
                 r["Variant Price"] = Number(u.p);
-              } else {
-                r["Variant Price"] = 0;
+                changed = true;
               }
-              changed = true;
 
               // Giá gốc
-              if (u.c !== "" && u.c != null) {
+              if (u.c !== "" && u.c != null && !isNaN(u.c)) {
                 r["Variant Compare At Price"] = Number(u.c);
-              } else {
-                r["Variant Compare At Price"] = 0;
+                changed = true;
               }
-              changed = true;
+
+              /// Tồn kho
+              if (u.q !== "" && u.q != null && !isNaN(u.q)) {
+                // Có tồn kho mới → dùng tồn kho mới
+                r["Inventory Quantity"] = Number(u.q);
+                r["Variant Inventory Qty"] = Number(u.q);
+              } else {
+                // ❗ Không có tồn kho → lấy lại từ master
+                r["Inventory Quantity"] =
+                  masterRow?.["Variant Inventory Qty"] ??
+                  masterRow?.["Inventory Quantity"] ??
+                  "";
+                r["Variant Inventory Qty"] = r["Inventory Quantity"];
+              }
 
               if (changed) {
                 updatedHandles.add(r.Handle);
@@ -552,11 +562,7 @@
                     SKU: r["Variant SKU"],
                     "Giá Giảm": money(r["Variant Price"]),
                     "Giá Gốc": money(r["Variant Compare At Price"]),
-                    "Tồn kho":
-                      r["Inventory Quantity"] ||
-                      masterRow?.["Variant Inventory Qty"] ||
-                      "",
-                    Status: r.Status || masterRow?.Status || "",
+                    "Tồn kho": r["Inventory Quantity"],
                   });
                 }
               }
@@ -596,17 +602,18 @@
         const headers = Object.keys(rows[0]);
 
         previewTable.innerHTML = `
-    <thead>
-      <tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr>
-    </thead>
-    <tbody>
-      ${rows
-        .map(
-          (r) => `<tr>${headers.map((h) => `<td>${r[h]}</td>`).join("")}</tr>`
-        )
-        .join("")}
-    </tbody>
-  `;
+          <thead>
+            <tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr>
+          </thead>
+          <tbody>
+            ${rows
+              .map(
+                (r) =>
+                  `<tr>${headers.map((h) => `<td>${r[h]}</td>`).join("")}</tr>`
+              )
+              .join("")}
+          </tbody>
+        `;
       }
 
       function exportFile() {
