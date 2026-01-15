@@ -524,39 +524,52 @@
             if (u) {
               let changed = false;
 
-              // Giá giảm
+              const masterRow = master.find(
+                (m) => m["Variant SKU"] === r["Variant SKU"]
+              );
+
+              // ===== GIÁ GIẢM =====
               if (u.p !== "" && u.p != null && !isNaN(u.p)) {
                 r["Variant Price"] = Number(u.p);
                 changed = true;
+              } else {
+                r["Variant Price"] = Number(
+                  masterRow?.["Variant Price"] ?? r["Variant Price"] ?? 0
+                );
               }
 
-              // Giá gốc
+              // ===== GIÁ GỐC =====
               if (u.c !== "" && u.c != null && !isNaN(u.c)) {
                 r["Variant Compare At Price"] = Number(u.c);
                 changed = true;
+              } else {
+                r["Variant Compare At Price"] = Number(
+                  masterRow?.["Variant Compare At Price"] ??
+                    r["Variant Compare At Price"] ??
+                    0
+                );
               }
 
-              /// Tồn kho
+              // ===== TỒN KHO =====
               if (u.q !== "" && u.q != null && !isNaN(u.q)) {
-                // Có tồn kho mới → dùng tồn kho mới
                 r["Inventory Quantity"] = Number(u.q);
                 r["Variant Inventory Qty"] = Number(u.q);
+                changed = true;
               } else {
-                // ❗ Không có tồn kho → lấy lại từ master
-                r["Inventory Quantity"] =
+                const stock =
                   masterRow?.["Variant Inventory Qty"] ??
                   masterRow?.["Inventory Quantity"] ??
                   "";
-                r["Variant Inventory Qty"] = r["Inventory Quantity"];
+
+                r["Inventory Quantity"] = stock;
+                r["Variant Inventory Qty"] = stock;
               }
 
+              // ===== PREVIEW & TRACK =====
               if (changed) {
                 updatedHandles.add(r.Handle);
                 if (!updatedSKUSet.has(r["Variant SKU"])) {
                   updatedSKUSet.add(r["Variant SKU"]);
-                  const masterRow = master.find(
-                    (m) => m["Variant SKU"] === r["Variant SKU"]
-                  );
                   preview.push({
                     STT: i++,
                     SKU: r["Variant SKU"],
