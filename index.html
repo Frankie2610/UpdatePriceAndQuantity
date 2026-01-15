@@ -550,6 +550,24 @@
                 );
               }
 
+              // ===== CHUẨN HOÁ GIÁ (Giá Gốc luôn > Giá Giảm) =====
+              const price = Number(r["Variant Price"]);
+              const compareAt = Number(r["Variant Compare At Price"]);
+
+              if (!isNaN(price) && !isNaN(compareAt) && price && compareAt) {
+                const maxPrice = Math.max(price, compareAt);
+                const minPrice = Math.min(price, compareAt);
+
+                if (
+                  maxPrice !== r["Variant Compare At Price"] ||
+                  minPrice !== r["Variant Price"]
+                ) {
+                  r["Variant Compare At Price"] = maxPrice;
+                  r["Variant Price"] = minPrice;
+                  changed = true;
+                }
+              }
+
               // ===== TỒN KHO =====
               if (u.q !== "" && u.q != null && !isNaN(u.q)) {
                 r["Inventory Quantity"] = Number(u.q);
